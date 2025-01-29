@@ -5,18 +5,23 @@
 #include "IMUProcessor.h"
 
 #define SERIAL_WELCOME "**> OSP Remote " VERSION " <**"
-// #define DEBUG_OVER_SERIAL
+
+/** uncomment to print LOG messages over serial */
+#define DEBUG_OVER_SERIAL
+
+/** uncomment to plot graphs over serial */
+#define PLOT_OVER_SERIAL
 
 #ifdef DEBUG_OVER_SERIAL
 #define LOG_(x) Serial.print((x))
 #define LOG(x) Serial.println((x))
 #else
-#define LOG_(x) (void)0
-#define LOG(x) (void)0
+#define LOG_(x) (void)0;
+#define LOG(x) (void)0;
 #endif
 
-const int GPIO_BTN_1 = 2; // btn toward outside
-const int GPIO_BTN_2 = 3; // btn toward center
+const pin_size_t GPIO_BTN_1 = 2; // btn toward outside
+const pin_size_t GPIO_BTN_2 = 3; // btn toward center
 
 Btn btn1(GPIO_BTN_1);
 Btn btn2(GPIO_BTN_2);
@@ -60,22 +65,33 @@ void setup()
     btn1.begin();
     btn2.begin();
 
+    // setup IMU
     if (!IMU.begin())
     {
-        LOG("Failed to initialize IMU!");
-        while (1)
-            ;
+        LOG("ERROR: Failed to initialize IMU!");
+        while (1) {}
     }
 
-    imu_processor.begin();
+    float SR_acceleration = IMU.accelerationSampleRate();
+    float SR_gyroscope = IMU.gyroscopeSampleRate();
 
+    if(SR_acceleration == SR_gyroscope) {
+        LOG_("IMU sample rate: ");  LOG(SR_acceleration);
+        imu_processor.begin(SR_acceleration);
+    }
+    else {
+        LOG_("ERROR: IMU sample rate mismatch (a/g): "); LOG(SR_acceleration); LOG(SR_gyroscope);
+        while(1) {}
+    }
+
+    // setup BLE
     if (!BLE.begin())
     {
-        LOG("Failed to initialize BLE!");
-        while (1)
-            ;
+        LOG("ERROR: Failed to initialize BLE!");
+        while (1) {}
     }
 
+    // start scanning
     change_app_state(AppState::Scanning);
 }
 
@@ -249,19 +265,21 @@ void loop()
         IMU.readAcceleration(imu_processor.ax, imu_processor.ay, imu_processor.az);
         IMU.readGyroscope(imu_processor.gx, imu_processor.gy, imu_processor.gz);
         imu_processor.update();
+
+        #ifdef PLOT_OVER_SERIAL
+            LOG_(">ax:"); LOG(imu_processor.ax);
+            LOG_(">ay:"); LOG(imu_processor.ay);
+            LOG_(">az:"); LOG(imu_processor.az);
+            LOG_(">gx:"); LOG(imu_processor.gx);
+            LOG_(">gy:"); LOG(imu_processor.gy);
+            LOG_(">gz:"); LOG(imu_processor.gz);
+        #endif
     }
 
-    if (btn1.event() == BtnEvent::Press)
-    {
-        LOG_(event_count++);
-        LOG(": Press [1]");
-    }
-
-    if (btn2.event() == BtnEvent::Press)
-    {
-        LOG_(event_count++);
-        LOG(": Press [2]");
-    }
+    #ifdef DEBUG_OVER_SERIAL
+        if (btn1.event() == BtnEvent::Press) { LOG_(event_count++); LOG(": press [1]"); }
+        if (btn2.event() == BtnEvent::Press) { LOG_(event_count++); LOG(": press [2]"); }
+    #endif
 
     switch (app_state)
     {

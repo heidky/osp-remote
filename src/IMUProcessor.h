@@ -11,10 +11,16 @@
 struct IMUProcessor
 {
 public:
+    float SR = 1.f;
     float ax, ay, az;
     float gx, gy, gz;
 
     IMUProcessor() {}
-    void begin();
+    void begin(float SR);
     void update();
+
+protected:
+    float SR;
+
+    float strength = 0;
 };
