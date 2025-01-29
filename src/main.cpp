@@ -175,6 +175,10 @@ void Connected_enter()
     LOG("Connected!");
 }
 
+bool is_control_enabled = false;
+long last_down_millis = -1000;
+int last_vibe_sent = -1;
+
 void Connected_loop()
 {
     if (!selected_peripheral || !selected_peripheral.connected())
@@ -184,37 +188,83 @@ void Connected_loop()
         return;
     }
 
-    static char tx_buffer[64] = "rem_b:00;";
+    long now = millis();
+    int vibe_to_send = -1;
+    static int RELEASE_CLICK_MS = 600;
 
-    bool updated = false;
+    if(btn1.pressed() && now - last_down_millis > RELEASE_CLICK_MS) {
+        if(!is_control_enabled) {
+            is_control_enabled = true;
+            imu_processor.set_strength(0);
+        }
+    }
+
     if (btn1.event() == BtnEvent::Press)
     {
-        tx_buffer[6] = '1';
-        updated = true;
+        last_down_millis = now;
     }
     else if (btn1.event() == BtnEvent::Release)
     {
-        tx_buffer[6] = '0';
-        updated = true;
+        if(last_down_millis > 0 && now - last_down_millis <= RELEASE_CLICK_MS) {
+            is_control_enabled = false;
+            last_down_millis = -1000;
+        }
     }
 
-    if (btn2.event() == BtnEvent::Press)
-    {
-        tx_buffer[7] = '1';
-        updated = true;
+    if(is_control_enabled) {
+        if(btn1.pressed()) {
+            float s = imu_processor.get_strength();
+            vibe_to_send = constrain(roundf(s * 20), 0, 20);
+        }
+        else {
+            vibe_to_send = last_vibe_sent;
+            imu_processor.set_strength(vibe_to_send / 20.f);
+        }
     }
-    else if (btn2.event() == BtnEvent::Release)
-    {
-        tx_buffer[7] = '0';
-        updated = true;
+    else {
+        vibe_to_send = 0;
     }
 
-    if (updated)
-    {
+    if (vibe_to_send != last_vibe_sent && vibe_to_send >= 0 && vibe_to_send <= 20)
+    {   
+        static char tx_buffer[64] = {0};
+        snprintf(tx_buffer, sizeof(tx_buffer), "Vibrate:%d;", vibe_to_send);
         tx_characteristic.writeValue(tx_buffer);
-        LOG_("TX: ");
-        LOG(tx_buffer);
+        last_vibe_sent = vibe_to_send;
+        LOG_("TX: "); LOG(tx_buffer);
     }
+
+    // static char tx_buffer[64] = "rem_b:00;";
+    // bool updated = false;
+
+    // if (btn1.event() == BtnEvent::Press)
+    // {
+    //     tx_buffer[6] = '1';
+    //     updated = true;
+    // }
+    // else if (btn1.event() == BtnEvent::Release)
+    // {
+    //     tx_buffer[6] = '0';
+    //     updated = true;
+    // }
+
+    // if (btn2.event() == BtnEvent::Press)
+    // {
+    //     tx_buffer[7] = '1';
+    //     updated = true;
+    // }
+    // else if (btn2.event() == BtnEvent::Release)
+    // {
+    //     tx_buffer[7] = '0';
+    //     updated = true;
+    // }
+
+    // if (updated)
+    // {
+    //     tx_characteristic.writeValue(tx_buffer);
+    //     LOG_("TX: ");
+    //     LOG(tx_buffer);
+    // }
 }
 
 void Connected_exit()
@@ -225,6 +275,10 @@ void Connected_exit()
         selected_peripheral.disconnect();
         // selected_peripheral = BLEDevice();
     }
+
+    last_vibe_sent = -1;
+    last_down_millis = -1000;
+    is_control_enabled = false;
 }
 
 void change_app_state(AppState new_state)

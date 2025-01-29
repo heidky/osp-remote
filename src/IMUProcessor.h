@@ -13,6 +13,9 @@ public:
     void begin(float SR);
     void update();
 
+    inline float get_strength() { return strength; }
+    inline void set_strength(float s) { strength = constrain(s, 0, 1); }
+
 protected:
     float SR;
 

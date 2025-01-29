@@ -72,4 +72,12 @@ void IMUProcessor::update()
     LOG_(">px:"); LOG(px);
     LOG_(">py:"); LOG(py);
     LOG_(">pz:"); LOG(pz);
+
+    float a_mag = sqrt(ax_ng*ax_ng);
+    // float a_mag = sqrt(ax_ng*ax_ng + ay_ng*ay_ng + az_ng*az_ng);
+    strength *= 0.99;
+    strength += a_mag / 150.f;
+    strength = constrain(strength, 0, 1);
+
+    LOG_(">s:"); LOG(strength);
 }
