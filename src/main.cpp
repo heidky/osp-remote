@@ -1,24 +1,18 @@
 #include <ArduinoBLE.h>
 
+#ifdef NANO_33_BLE
+#include <Arduino_BMI270_BMM150.h>
+#endif
+
+#ifdef NANO_33_IOT
+#include <Arduino_LSM6DS3.h>
+#endif
+
+#include "log.h"
 #include "utils.h"
 #include "Btn.h"
 #include "IMUProcessor.h"
 
-#define SERIAL_WELCOME "**> OSP Remote " VERSION " <**"
-
-/** uncomment to print LOG messages over serial */
-#define DEBUG_OVER_SERIAL
-
-/** uncomment to plot graphs over serial */
-#define PLOT_OVER_SERIAL
-
-#ifdef DEBUG_OVER_SERIAL
-#define LOG_(x) Serial.print((x))
-#define LOG(x) Serial.println((x))
-#else
-#define LOG_(x) (void)0;
-#define LOG(x) (void)0;
-#endif
 
 const pin_size_t GPIO_BTN_1 = 2; // btn toward outside
 const pin_size_t GPIO_BTN_2 = 3; // btn toward center
@@ -265,15 +259,6 @@ void loop()
         IMU.readAcceleration(imu_processor.ax, imu_processor.ay, imu_processor.az);
         IMU.readGyroscope(imu_processor.gx, imu_processor.gy, imu_processor.gz);
         imu_processor.update();
-
-        #ifdef PLOT_OVER_SERIAL
-            LOG_(">ax:"); LOG(imu_processor.ax);
-            LOG_(">ay:"); LOG(imu_processor.ay);
-            LOG_(">az:"); LOG(imu_processor.az);
-            LOG_(">gx:"); LOG(imu_processor.gx);
-            LOG_(">gy:"); LOG(imu_processor.gy);
-            LOG_(">gz:"); LOG(imu_processor.gz);
-        #endif
     }
 
     #ifdef DEBUG_OVER_SERIAL
